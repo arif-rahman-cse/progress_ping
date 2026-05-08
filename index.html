@@ -1,0 +1,2489 @@
+<!DOCTYPE html><html lang="en" style="--ping: #2EE8A0; --goal: #2EE8A0; --ping-dim: rgba(46,232,160,0.12); --ping-line: rgba(46,232,160,0.28); --ping-glow: rgba(46,232,160,0.35); --ping-ink: #0B0D12; --anim: 1;"><head>
+
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ProgressPing — Get a ping when progress matters</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400;1,9..144,500&amp;family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #0B0D12;
+    --bg2:       #11141B;
+    --bg3:       #171B24;
+    --bg4:       #1E2330;
+    --border:    rgba(255,255,255,0.07);
+    --border-b:  rgba(255,255,255,0.14);
+    --text:      #ECEEF3;
+    --text-dim:  #B7BCCB;
+    --muted:     #6B7186;
+    --muted2:    #8A90A4;
+
+    --ping:      #2EE8A0;
+    --ping-ink:  #0B0D12;
+    --ping-dim:  rgba(46,232,160,0.12);
+    --ping-line: rgba(46,232,160,0.28);
+    --ping-glow: rgba(46,232,160,0.35);
+
+    --event:     #F06B5D;
+    --goal:      #2EE8A0;
+    --task:      #6E8BFF;
+    --amber:     #F5B748;
+
+    --serif: 'Fraunces', 'DM Serif Display', Georgia, serif;
+    --sans:  'Inter', system-ui, -apple-system, sans-serif;
+    --mono:  'JetBrains Mono', 'DM Mono', ui-monospace, monospace;
+
+    --anim: 1;
+  }
+
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.6;
+    font-feature-settings: "ss01","cv11";
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  ::selection { background: var(--ping); color: var(--ping-ink); }
+
+  /* ── Ambient grid + glow ── */
+  .bg-grid {
+    position: fixed; inset: 0; pointer-events: none; z-index: 0;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 72px 72px;
+    mask-image: radial-gradient(ellipse 90% 60% at 50% 20%, black 30%, transparent 80%);
+  }
+  .glow {
+    position: fixed; pointer-events: none; border-radius: 50%;
+    filter: blur(100px); z-index: 0;
+  }
+  .glow.a { width: 720px; height: 720px; background: var(--ping); opacity: 0.08; top: -280px; right: -180px; }
+  .glow.b { width: 520px; height: 520px; background: var(--task); opacity: 0.055; top: 40vh; left: -240px; }
+  .glow.c { width: 480px; height: 480px; background: var(--event); opacity: 0.04; top: 140vh; right: -120px; }
+
+  /* ── NAV ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 14px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(11,13,18,0.72);
+    backdrop-filter: blur(14px) saturate(140%);
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    border-bottom: 1px solid var(--border);
+  }
+  .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+  .brand-mark {
+    width: 28px; height: 28px; position: relative;
+    display: grid; place-items: center;
+  }
+  .brand-mark::before {
+    content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background: radial-gradient(circle, var(--ping) 0%, transparent 60%);
+    opacity: 0.35; filter: blur(6px);
+  }
+  .brand-mark svg { position: relative; z-index: 1; }
+  .brand-name {
+    font-family: var(--sans);
+    font-weight: 600;
+    font-size: 15px;
+    letter-spacing: -0.01em;
+  }
+  .brand-name em { color: var(--ping); font-style: normal; }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a {
+    font-size: 13.5px; color: var(--text-dim);
+    text-decoration: none; transition: color .2s;
+  }
+  .nav-links a:hover { color: var(--text); }
+  .nav-cta {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ping-ink);
+    background: var(--ping);
+    border: none;
+    padding: 9px 18px;
+    border-radius: 999px;
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 0 0 1px var(--ping-line), 0 10px 30px -10px var(--ping-glow);
+  }
+  .nav-cta:hover { transform: translateY(-1px); box-shadow: 0 0 0 1px var(--ping-line), 0 14px 36px -10px var(--ping-glow); }
+
+  /* ── Layout ── */
+  main { position: relative; z-index: 1; }
+  section { padding: 120px 32px; max-width: 1200px; margin: 0 auto; }
+
+  /* ── HERO ── */
+  .hero {
+    padding: 150px 32px 60px;
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 56px;
+    align-items: center;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  .hero-left {}
+  .badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: var(--ping-dim);
+    border: 1px solid var(--ping-line);
+    border-radius: 999px;
+    padding: 5px 12px 5px 10px;
+    font-size: 11.5px;
+    font-family: var(--mono);
+    color: var(--ping);
+    letter-spacing: 0.02em;
+    margin-bottom: 28px;
+  }
+  .ping-dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--ping);
+    box-shadow: 0 0 0 0 var(--ping);
+    animation: pulse calc(2s / max(var(--anim), 0.001)) ease-out infinite;
+  }
+  @keyframes pulse {
+    0%   { box-shadow: 0 0 0 0 var(--ping-glow); }
+    70%  { box-shadow: 0 0 0 8px rgba(46,232,160,0); }
+    100% { box-shadow: 0 0 0 0 rgba(46,232,160,0); }
+  }
+
+  h1.display {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(48px, 6.4vw, 88px);
+    line-height: 0.98;
+    letter-spacing: -0.035em;
+    margin-bottom: 28px;
+  }
+  h1.display em {
+    font-style: italic;
+    font-weight: 400;
+    color: var(--ping);
+    position: relative;
+    white-space: nowrap;
+  }
+  h1.display em::after {
+    content: "";
+    position: absolute;
+    left: 0; right: 0; bottom: 6%;
+    height: 8%;
+    background: var(--ping);
+    opacity: 0.18;
+    border-radius: 3px;
+    z-index: -1;
+  }
+  .hero-sub {
+    font-size: 19px;
+    color: var(--text-dim);
+    max-width: 520px;
+    margin-bottom: 36px;
+    font-weight: 400;
+    line-height: 1.55;
+  }
+  .hero-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .btn-primary {
+    background: var(--ping);
+    color: var(--ping-ink);
+    border: none;
+    padding: 14px 24px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-weight: 600;
+    font-family: var(--sans);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform .2s, box-shadow .2s;
+    box-shadow: 0 0 0 1px var(--ping-line), 0 16px 40px -12px var(--ping-glow);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 0 0 1px var(--ping-line), 0 22px 48px -12px var(--ping-glow); }
+  .btn-arrow {
+    width: 18px; height: 18px; display: inline-block;
+    transition: transform .25s;
+  }
+  .btn-primary:hover .btn-arrow { transform: translateX(3px); }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-dim);
+    border: 1px solid var(--border-b);
+    padding: 13px 22px;
+    border-radius: 999px;
+    font-size: 15px;
+    font-family: var(--sans);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-ghost:hover { border-color: var(--text-dim); color: var(--text); }
+  .hero-note {
+    margin-top: 20px;
+    font-size: 12.5px;
+    color: var(--muted);
+    font-family: var(--mono);
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+  .hero-note .dot { width: 3px; height: 3px; border-radius: 50%; background: var(--muted); }
+
+  /* Social proof strip */
+  .proof {
+    margin-top: 40px;
+    display: flex; align-items: center; gap: 14px;
+    color: var(--muted2);
+    font-size: 13px;
+  }
+  .avatars { display: flex; }
+  .avatars span {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid var(--bg);
+    margin-left: -8px;
+    display: grid; place-items: center;
+    font-size: 11px; font-weight: 600; font-family: var(--mono);
+    color: var(--text);
+  }
+  .avatars span:first-child { margin-left: 0; }
+
+  /* ── HERO RIGHT: Live phone-ish ping demo ── */
+  .hero-demo {
+    position: relative;
+    height: 540px;
+    display: flex; justify-content: center; align-items: center;
+  }
+  .demo-frame {
+    position: relative;
+    width: 360px; height: 540px;
+    background: linear-gradient(180deg, #15181F 0%, #0E1116 100%);
+    border: 1px solid var(--border-b);
+    border-radius: 36px;
+    padding: 18px;
+    box-shadow:
+      0 40px 80px -30px rgba(0,0,0,0.8),
+      inset 0 1px 0 rgba(255,255,255,0.05);
+    overflow: hidden;
+  }
+  .demo-frame::before {
+    content: "";
+    position: absolute; top: 14px; left: 50%; transform: translateX(-50%);
+    width: 86px; height: 22px;
+    background: #05070A;
+    border-radius: 12px;
+    z-index: 3;
+  }
+  .demo-screen {
+    position: relative;
+    width: 100%; height: 100%;
+    background:
+      radial-gradient(ellipse at top, rgba(46,232,160,0.08), transparent 60%),
+      var(--bg2);
+    border-radius: 22px;
+    padding: 46px 14px 14px;
+    overflow: hidden;
+  }
+  .demo-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 0 4px 12px;
+    font-family: var(--mono); font-size: 10.5px;
+    color: var(--muted2);
+    letter-spacing: 0.04em;
+    border-bottom: 1px dashed var(--border);
+    margin-bottom: 12px;
+  }
+  .demo-header .live {
+    display: inline-flex; align-items: center; gap: 5px;
+    color: var(--ping);
+  }
+  .demo-stream { display: flex; flex-direction: column; gap: 10px; }
+  .n {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 14px;
+    position: relative;
+    overflow: hidden;
+    animation: nslide calc(0.5s / max(var(--anim), 0.001)) cubic-bezier(.2,.8,.2,1) both;
+  }
+  @keyframes nslide {
+    from { opacity: 0; transform: translateY(16px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .n::before {
+    content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  }
+  .n.event::before { background: var(--event); }
+  .n.goal::before  { background: var(--goal); }
+  .n.task::before  { background: var(--task); }
+  .n-top {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 4px;
+  }
+  .n-tag {
+    font-family: var(--mono); font-size: 9.5px; letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .n.event .n-tag { color: var(--event); }
+  .n.goal .n-tag  { color: var(--goal); }
+  .n.task .n-tag  { color: var(--task); }
+  .n-time { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+  .n-title { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 6px; }
+  .n-body { font-size: 11.5px; color: var(--text-dim); line-height: 1.5; }
+  .n-body b { color: var(--text); font-weight: 500; }
+
+  /* Floating AI chip outside the phone */
+  .ai-chip {
+    position: absolute;
+    top: 24px; left: -60px;
+    z-index: 4;
+    white-space: nowrap;
+    background: var(--bg3);
+    border: 1px solid var(--border-b);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 12px 30px -12px rgba(0,0,0,0.6);
+    animation: bob calc(4s / max(var(--anim), 0.001)) ease-in-out infinite;
+  }
+  .ai-chip .d { width: 6px; height: 6px; border-radius: 50%; background: var(--task); box-shadow: 0 0 8px var(--task); }
+  @keyframes bob {
+    0%,100% { transform: translateY(0); }
+    50%    { transform: translateY(-6px); }
+  }
+  .chip-br {
+    position: absolute;
+    bottom: 60px; right: -60px;
+    z-index: 4;
+    white-space: nowrap;
+    background: var(--bg3);
+    border: 1px solid var(--border-b);
+    border-radius: 10px;
+    padding: 8px 12px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--text-dim);
+    display: flex; align-items: center; gap: 8px;
+    box-shadow: 0 12px 30px -12px rgba(0,0,0,0.6);
+    animation: bob calc(5s / max(var(--anim), 0.001)) ease-in-out infinite reverse;
+  }
+  .chip-br .d { width: 6px; height: 6px; border-radius: 50%; background: var(--goal); box-shadow: 0 0 8px var(--goal); }
+
+  /* ── Logo strip ── */
+  .strip {
+    padding: 30px 32px;
+    max-width: 1200px;
+    margin: 0 auto;
+    display: flex; align-items: center; gap: 36px; flex-wrap: wrap;
+    justify-content: center;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    color: var(--muted);
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+  .strip .sep { opacity: 0.4; }
+
+  /* ── Section label ── */
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted2);
+    letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 18px;
+  }
+  .eyebrow::before {
+    content: ""; width: 18px; height: 1px; background: var(--muted);
+  }
+
+  h2.section-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: clamp(36px, 4.6vw, 60px);
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 16px;
+  }
+  h2.section-title em { color: var(--ping); font-style: italic; font-weight: 400; }
+  .lede {
+    font-size: 18px; color: var(--text-dim); max-width: 620px;
+    font-weight: 400; line-height: 1.55;
+  }
+
+  /* ── Problem ── */
+  .problem-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0;
+    margin-top: 64px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+  .fail {
+    padding: 36px 32px 40px;
+    border-right: 1px solid var(--border);
+    position: relative;
+    transition: background .3s;
+  }
+  .fail:last-child { border-right: none; }
+  .fail:hover { background: var(--bg3); }
+  .fail-num {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 48px;
+    line-height: 1;
+    color: transparent;
+    -webkit-text-stroke: 1px var(--border-b);
+    margin-bottom: 18px;
+  }
+  .fail-h {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.02em;
+    margin-bottom: 10px;
+    line-height: 1.2;
+  }
+  .fail-h .strike {
+    text-decoration: line-through;
+    text-decoration-color: var(--event);
+    text-decoration-thickness: 2px;
+    color: var(--muted2);
+  }
+  .fail-p { font-size: 14px; color: var(--text-dim); line-height: 1.65; }
+  .fail-p b { color: var(--ping); font-weight: 500; }
+
+  /* ── Pillars (3-pillar architecture) ── */
+  .pillars {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    position: relative;
+  }
+  .pillar {
+    border-radius: 20px;
+    padding: 28px 24px 24px;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid;
+  }
+  .pillar.p-event { background: linear-gradient(180deg, rgba(240,107,93,0.14), rgba(240,107,93,0.03)); border-color: rgba(240,107,93,0.28); }
+  .pillar.p-goal  { background: linear-gradient(180deg, rgba(46,232,160,0.14), rgba(46,232,160,0.03)); border-color: rgba(46,232,160,0.28); }
+  .pillar.p-task  { background: linear-gradient(180deg, rgba(110,139,255,0.14), rgba(110,139,255,0.03)); border-color: rgba(110,139,255,0.28); }
+
+  .pillar-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+  .pillar-icon {
+    width: 30px; height: 30px; border-radius: 8px;
+    display: grid; place-items: center;
+  }
+  .p-event .pillar-icon { background: rgba(240,107,93,0.18); color: var(--event); }
+  .p-goal  .pillar-icon { background: rgba(46,232,160,0.18); color: var(--goal); }
+  .p-task  .pillar-icon { background: rgba(110,139,255,0.18); color: var(--task); }
+  .pillar-title {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 22px;
+    letter-spacing: -0.01em;
+  }
+  .pillar-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted2);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 22px;
+  }
+  .pillar-row {
+    display: flex; gap: 10px; align-items: flex-start;
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    margin-bottom: 8px;
+  }
+  .pillar-row:last-child { margin-bottom: 0; }
+  .row-num {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    color: var(--muted); padding-top: 2px;
+  }
+  .row-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .row-desc { font-size: 12.5px; color: var(--text-dim); line-height: 1.5; }
+
+  .pillar-arrow {
+    position: absolute; top: 50%; right: -16px; transform: translateY(-50%);
+    width: 32px; height: 32px;
+    background: var(--bg);
+    border: 1px solid var(--border-b);
+    border-radius: 50%;
+    display: grid; place-items: center;
+    color: var(--muted2);
+    z-index: 2;
+  }
+
+  .pillar-foot {
+    margin-top: 44px;
+    padding: 18px 24px;
+    border: 1px dashed var(--border-b);
+    border-radius: 14px;
+    text-align: center;
+    font-size: 13px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  .pillar-foot b { color: var(--ping); font-weight: 500; }
+
+  /* ── AI engine diagram ── */
+  .engine {
+    margin-top: 72px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    background:
+      radial-gradient(ellipse at 50% 0%, rgba(46,232,160,0.06), transparent 60%),
+      var(--bg2);
+    padding: 40px 32px;
+  }
+  .engine-title {
+    text-align: center;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted2); letter-spacing: 0.14em; text-transform: uppercase;
+    margin-bottom: 28px;
+  }
+  .engine-flow {
+    display: grid;
+    grid-template-columns: repeat(7, auto);
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 34px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .engine-flow::-webkit-scrollbar { display: none; }
+  .node {
+    background: var(--bg3);
+    border: 1px solid var(--border-b);
+    border-radius: 14px;
+    padding: 14px 18px;
+    min-width: 150px;
+    text-align: center;
+  }
+  .node.highlight-ping { border-color: var(--ping-line); background: linear-gradient(180deg, rgba(46,232,160,0.12), rgba(46,232,160,0.04)); }
+  .node.highlight-task { border-color: rgba(110,139,255,0.28); background: linear-gradient(180deg, rgba(110,139,255,0.12), rgba(110,139,255,0.04)); }
+  .node-label { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .node-sub { font-family: var(--mono); font-size: 10.5px; color: var(--muted2); letter-spacing: 0.02em; }
+  .arrow {
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .engine-examples {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px;
+  }
+  .ex {
+    border-radius: 14px;
+    padding: 18px 18px 16px;
+    border: 1px solid;
+  }
+  .ex.event { background: rgba(240,107,93,0.08); border-color: rgba(240,107,93,0.22); }
+  .ex.goal  { background: rgba(46,232,160,0.08);  border-color: rgba(46,232,160,0.22); }
+  .ex.task  { background: rgba(110,139,255,0.08); border-color: rgba(110,139,255,0.22); }
+  .ex-head {
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.1em;
+    text-transform: uppercase; margin-bottom: 10px;
+  }
+  .ex.event .ex-head { color: var(--event); }
+  .ex.goal  .ex-head { color: var(--goal); }
+  .ex.task  .ex-head { color: var(--task); }
+  .ex-title { font-size: 15px; font-weight: 500; color: var(--text); margin-bottom: 8px; }
+  .ex-body { font-size: 12.5px; color: var(--text-dim); line-height: 1.6; }
+
+  /* ── Try it (interactive demo) ── */
+  .try {
+    margin-top: 64px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+  .try-left {
+    padding: 40px 36px;
+    border-right: 1px solid var(--border);
+  }
+  .try-h {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 30px; line-height: 1.1; letter-spacing: -0.02em;
+    margin-bottom: 14px;
+  }
+  .try-p { font-size: 15px; color: var(--text-dim); margin-bottom: 24px; line-height: 1.6; }
+  .try-tabs { display: flex; gap: 6px; margin-bottom: 16px; }
+  .try-tab {
+    padding: 6px 12px;
+    border-radius: 999px;
+    font-size: 12.5px;
+    font-weight: 500;
+    background: transparent;
+    border: 1px solid var(--border-b);
+    color: var(--text-dim);
+    cursor: pointer;
+    display: inline-flex; align-items: center; gap: 6px;
+    transition: all .2s;
+    font-family: var(--sans);
+  }
+  .try-tab .tdot { width: 6px; height: 6px; border-radius: 50%; }
+  .try-tab[data-type="event"] .tdot { background: var(--event); }
+  .try-tab[data-type="goal"]  .tdot { background: var(--goal); }
+  .try-tab[data-type="task"]  .tdot { background: var(--task); }
+  .try-tab.active { background: rgba(255,255,255,0.06); border-color: var(--border-b); color: var(--text); }
+  .try-input {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-b);
+    border-radius: 14px;
+    padding: 16px 18px;
+    font-size: 15px;
+    color: var(--text);
+    font-family: var(--sans);
+    margin-bottom: 14px;
+    transition: border-color .2s, box-shadow .2s;
+  }
+  .try-input:focus {
+    outline: none;
+    border-color: var(--ping-line);
+    box-shadow: 0 0 0 3px var(--ping-dim);
+  }
+  .try-suggest { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .try-chip {
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: all .15s;
+  }
+  .try-chip:hover { color: var(--text); border-color: var(--border-b); }
+  .try-gen {
+    width: 100%;
+    background: var(--ping);
+    color: var(--ping-ink);
+    border: none;
+    padding: 13px;
+    border-radius: 12px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform .2s, opacity .2s;
+    display: inline-flex; justify-content: center; align-items: center; gap: 8px;
+    font-family: var(--sans);
+  }
+  .try-gen:hover { transform: translateY(-1px); }
+  .try-gen:disabled { opacity: 0.6; cursor: wait; transform: none; }
+
+  .try-right {
+    padding: 40px 36px;
+    background:
+      radial-gradient(ellipse at 0% 0%, rgba(46,232,160,0.05), transparent 60%),
+      var(--bg2);
+    min-height: 380px;
+    display: flex; flex-direction: column;
+  }
+  .try-right-head {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted2); letter-spacing: 0.1em; text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .try-output {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 22px;
+    flex: 1;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .try-placeholder {
+    margin: auto;
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    max-width: 260px;
+    line-height: 1.5;
+  }
+  .try-placeholder .big {
+    font-family: var(--serif); font-style: italic;
+    font-size: 28px; color: var(--text-dim); display: block; margin-bottom: 10px;
+  }
+
+  .out-header { display: flex; justify-content: space-between; align-items: center; }
+  .out-type {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+  .out-badge {
+    font-family: var(--mono); font-size: 10.5px;
+    padding: 3px 9px; border-radius: 999px;
+  }
+  .out-title {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 22px; letter-spacing: -0.01em;
+    line-height: 1.2;
+  }
+  .out-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .out-ai {
+    background: var(--bg3);
+    border-radius: 10px;
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--text-dim);
+    line-height: 1.55;
+    border-left: 2px solid var(--ping);
+  }
+  .out-ai .label {
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em;
+    color: var(--ping); display: block; margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .out-ai ul { list-style: none; padding: 0; margin: 0; }
+  .out-ai li { padding-left: 16px; position: relative; }
+  .out-ai li::before { content: "→"; position: absolute; left: 0; color: var(--ping); }
+
+  .typing {
+    display: inline-flex; gap: 4px; margin-left: 6px;
+    vertical-align: middle;
+  }
+  .typing i {
+    width: 4px; height: 4px; border-radius: 50%; background: var(--ping);
+    display: inline-block;
+    animation: bounce 1.1s infinite ease-in-out;
+  }
+  .typing i:nth-child(2) { animation-delay: 0.15s; }
+  .typing i:nth-child(3) { animation-delay: 0.3s; }
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); opacity: 0.5; }
+    40% { transform: translateY(-4px); opacity: 1; }
+  }
+
+  /* ── Comparison table ── */
+  .compare {
+    margin-top: 64px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    overflow: hidden;
+    background: var(--bg2);
+  }
+  .compare-row {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr 1fr;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+  }
+  .compare-row:last-child { border-bottom: none; }
+  .compare-row.head {
+    background: var(--bg3);
+    font-family: var(--mono); font-size: 11px;
+    letter-spacing: 0.1em; text-transform: uppercase;
+    color: var(--muted2);
+    padding: 14px 28px;
+  }
+  .compare-row.head .pp { color: var(--ping); }
+  .compare-label { font-size: 14.5px; font-weight: 500; }
+  .compare-cell { font-size: 13px; color: var(--text-dim); }
+  .compare-cell.pp { color: var(--text); font-weight: 500; }
+  .compare-cell .check { color: var(--ping); font-weight: 600; }
+  .compare-cell .x { color: var(--muted); }
+
+  /* ── Features (interactive explorer) ── */
+  .ic-event { background: rgba(240,107,93,0.12); color: var(--event); }
+  .ic-goal  { background: rgba(46,232,160,0.12); color: var(--goal); }
+  .ic-task  { background: rgba(110,139,255,0.12); color: var(--task); }
+  .ic-amber { background: rgba(245,183,72,0.12); color: var(--amber); }
+
+  .fx {
+    margin-top: 56px;
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    gap: 20px;
+    align-items: stretch;
+  }
+  .fx-tabs {
+    display: flex; flex-direction: column; gap: 8px;
+  }
+  .fx-tab {
+    display: grid;
+    grid-template-columns: 32px 1fr auto;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    color: var(--text);
+    cursor: pointer;
+    text-align: left;
+    transition: all .25s;
+    font-family: var(--sans);
+  }
+  .fx-tab:hover { border-color: var(--border-b); background: var(--bg3); }
+  .fx-tab.active {
+    border-color: var(--ping-line);
+    background: linear-gradient(90deg, rgba(46,232,160,0.08), transparent 70%), var(--bg2);
+    box-shadow: inset 3px 0 0 var(--ping);
+  }
+  .fx-tab-icon {
+    width: 32px; height: 32px; border-radius: 9px;
+    display: grid; place-items: center; flex-shrink: 0;
+  }
+  .fx-tab-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .fx-tab-text b { font-size: 14px; font-weight: 500; color: var(--text); }
+  .fx-tab-text i {
+    font-style: normal; font-size: 12px; color: var(--muted2);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .fx-tab-caret {
+    font-family: var(--mono); color: var(--muted); font-size: 14px;
+    transition: transform .25s, color .25s;
+  }
+  .fx-tab.active .fx-tab-caret { color: var(--ping); transform: translateX(3px); }
+
+  .fx-stage {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+    min-height: 460px;
+    position: relative;
+  }
+  .fx-stage::before {
+    content: ""; position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top right, rgba(46,232,160,0.05), transparent 60%);
+    pointer-events: none;
+  }
+  .fx-stage-head {
+    padding: 14px 22px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted2); letter-spacing: 0.08em; text-transform: uppercase;
+    position: relative; z-index: 1;
+  }
+  .fx-stage-body {
+    flex: 1; padding: 24px; position: relative; z-index: 1;
+    display: flex; flex-direction: column;
+  }
+  .fx-panel { display: none; animation: fxIn .35s ease both; }
+  .fx-panel.active { display: flex; flex-direction: column; gap: 14px; flex: 1; }
+  @keyframes fxIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+  .fx-notif {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 16px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .fx-notif::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; }
+  .fx-notif.event::before { background: var(--event); }
+  .fx-notif.goal::before { background: var(--goal); }
+  .fx-notif.task::before { background: var(--task); }
+  .fx-notif.amber::before { background: var(--amber); }
+  .fx-notif-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; }
+  .fx-notif.event .fx-notif-top { color: var(--event); }
+  .fx-notif.goal  .fx-notif-top { color: var(--goal); }
+  .fx-notif.task  .fx-notif-top { color: var(--task); }
+  .fx-notif.amber .fx-notif-top { color: var(--amber); }
+  .fx-notif-title { font-family: var(--serif); font-size: 20px; font-weight: 500; letter-spacing: -0.01em; line-height: 1.2; margin-bottom: 6px; color: var(--text); }
+  .fx-notif-body { font-size: 13.5px; color: var(--text-dim); line-height: 1.6; }
+  .fx-notif-body b { color: var(--text); font-weight: 500; }
+
+  .fx-steps { display: flex; flex-direction: column; gap: 6px; }
+  .fx-step {
+    display: grid; grid-template-columns: 22px 1fr auto; gap: 12px;
+    padding: 10px 12px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    font-size: 13px;
+    align-items: center;
+  }
+  .fx-step.done { opacity: 0.55; }
+  .fx-step.done .fx-step-title { text-decoration: line-through; }
+  .fx-step.current { border-color: var(--ping-line); background: linear-gradient(90deg, rgba(46,232,160,0.08), transparent), var(--bg3); }
+  .fx-step-check {
+    width: 18px; height: 18px; border-radius: 50%;
+    border: 1.5px solid var(--border-b);
+    display: grid; place-items: center;
+    font-size: 10px; color: var(--muted);
+    font-family: var(--mono);
+  }
+  .fx-step.done .fx-step-check { background: var(--ping); color: var(--ping-ink); border-color: var(--ping); }
+  .fx-step.current .fx-step-check { border-color: var(--ping); color: var(--ping); }
+  .fx-step-title { font-size: 13.5px; color: var(--text); }
+  .fx-step-meta { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+
+  .fx-timeline {
+    margin-top: 4px;
+    padding: 14px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  .fx-timeline-bar {
+    position: relative; height: 6px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 3px;
+    margin: 20px 4px 6px;
+  }
+  .fx-timeline-fill {
+    position: absolute; left: 0; top: 0; bottom: 0;
+    background: var(--ping); border-radius: 3px;
+    box-shadow: 0 0 12px var(--ping-glow);
+  }
+  .fx-timeline-marker {
+    position: absolute; top: 50%; transform: translate(-50%, -50%);
+    display: flex; flex-direction: column; align-items: center; gap: 4px;
+  }
+  .fx-timeline-dot {
+    width: 14px; height: 14px; border-radius: 50%;
+    background: var(--bg); border: 2px solid var(--border-b);
+  }
+  .fx-timeline-dot.fired { background: var(--ping); border-color: var(--ping); box-shadow: 0 0 8px var(--ping-glow); }
+  .fx-timeline-dot.now { background: var(--amber); border-color: var(--amber); box-shadow: 0 0 10px rgba(245,183,72,0.6); }
+  .fx-timeline-label {
+    position: absolute; top: 18px; left: 50%; transform: translateX(-50%);
+    font-family: var(--mono); font-size: 10px; color: var(--muted2);
+    white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .fx-timeline-head { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10.5px; color: var(--muted2); letter-spacing: 0.08em; text-transform: uppercase; }
+
+  .fx-dash { display: flex; flex-direction: column; gap: 6px; }
+  .fx-dash-sec { font-family: var(--mono); font-size: 10.5px; color: var(--muted2); letter-spacing: 0.08em; text-transform: uppercase; margin-top: 4px; }
+  .fx-dash-item {
+    display: grid; grid-template-columns: 10px 1fr auto; gap: 12px; align-items: center;
+    padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 10px;
+    font-size: 13px;
+  }
+  .fx-dash-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .fx-dash-item b { font-weight: 500; color: var(--text); }
+  .fx-dash-item span.tag { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; }
+
+  .fx-replan {
+    display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; align-items: stretch;
+  }
+  .fx-replan-col {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 12px;
+    padding: 14px 14px;
+  }
+  .fx-replan-col.after { border-color: var(--ping-line); background: linear-gradient(180deg, rgba(46,232,160,0.08), transparent 80%), var(--bg3); }
+  .fx-replan-head { font-family: var(--mono); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted2); margin-bottom: 10px; }
+  .fx-replan-col.after .fx-replan-head { color: var(--ping); }
+  .fx-replan-line { font-size: 13px; color: var(--text-dim); padding: 4px 0; display: flex; gap: 8px; align-items: flex-start; line-height: 1.5; }
+  .fx-replan-line .mark { font-family: var(--mono); font-size: 11px; color: var(--muted); flex-shrink: 0; }
+  .fx-replan-arrow { align-self: center; font-family: var(--mono); color: var(--muted); font-size: 18px; }
+
+  .fx-stage-foot {
+    padding: 14px 22px;
+    border-top: 1px solid var(--border);
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 13px; color: var(--text-dim);
+    background: rgba(0,0,0,0.15);
+    position: relative; z-index: 1;
+  }
+  .fx-dots { display: flex; gap: 6px; }
+  .fx-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    background: rgba(255,255,255,0.12); cursor: pointer;
+    transition: background .2s, transform .2s;
+  }
+  .fx-dot:hover { transform: scale(1.2); }
+  .fx-dot.active { background: var(--ping); box-shadow: 0 0 6px var(--ping-glow); }
+
+  /* ── Pricing ── */
+  .pricing { text-align: center; }
+  .pricing-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    text-align: left;
+    margin-top: 56px;
+  }
+  .p-card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 32px 28px;
+    position: relative;
+    display: flex; flex-direction: column;
+  }
+  .p-card.featured {
+    border-color: var(--ping-line);
+    background:
+      radial-gradient(ellipse at top, rgba(46,232,160,0.12), transparent 60%),
+      var(--bg2);
+    box-shadow: 0 0 0 1px var(--ping-line), 0 24px 60px -30px var(--ping-glow);
+  }
+  .pill {
+    position: absolute; top: -12px; left: 50%; transform: translateX(-50%);
+    background: var(--ping); color: var(--ping-ink);
+    font-family: var(--mono); font-size: 10.5px;
+    font-weight: 600; letter-spacing: 0.08em;
+    padding: 5px 14px; border-radius: 999px; white-space: nowrap;
+    text-transform: uppercase;
+  }
+  .p-tier {
+    font-family: var(--mono); font-size: 11px;
+    color: var(--muted2); letter-spacing: 0.12em;
+    text-transform: uppercase; margin-bottom: 16px;
+  }
+  .p-amt {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 52px; line-height: 1; margin-bottom: 6px;
+    letter-spacing: -0.02em;
+  }
+  .p-amt span { font-size: 16px; color: var(--muted); font-family: var(--sans); font-weight: 400; }
+  .p-desc { font-size: 13px; color: var(--muted2); margin-bottom: 28px; }
+  .p-list { list-style: none; display: flex; flex-direction: column; gap: 10px; margin-bottom: 28px; flex: 1; }
+  .p-list li { font-size: 14px; color: var(--text-dim); display: flex; gap: 10px; align-items: flex-start; }
+  .p-list .c { color: var(--ping); font-family: var(--mono); font-size: 11px; margin-top: 3px; }
+  .p-list .x { color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 3px; }
+  .p-btn {
+    width: 100%; padding: 12px;
+    border-radius: 12px;
+    font-size: 14px; font-weight: 600;
+    cursor: pointer;
+    font-family: var(--sans);
+  }
+  .p-btn.out {
+    background: transparent;
+    border: 1px solid var(--border-b);
+    color: var(--text-dim);
+    transition: all .2s;
+  }
+  .p-btn.out:hover { color: var(--text); border-color: var(--muted2); }
+  .p-btn.fill {
+    background: var(--ping);
+    color: var(--ping-ink);
+    border: none;
+    transition: transform .2s;
+  }
+  .p-btn.fill:hover { transform: translateY(-1px); }
+
+  /* ── FAQ ── */
+  .faq { max-width: 820px; margin: 0 auto; }
+  .faq-row {
+    border-bottom: 1px solid var(--border);
+    padding: 22px 4px;
+    cursor: pointer;
+  }
+  .faq-q {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 20px;
+  }
+  .faq-q h3 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: 20px; letter-spacing: -0.01em;
+  }
+  .faq-toggle {
+    width: 24px; height: 24px; flex-shrink: 0;
+    display: grid; place-items: center;
+    color: var(--muted2);
+    transition: transform .25s, color .2s;
+  }
+  .faq-row[open] .faq-toggle { transform: rotate(45deg); color: var(--ping); }
+  .faq-a {
+    max-height: 0; overflow: hidden;
+    transition: max-height .35s ease, padding .25s ease;
+    color: var(--text-dim);
+    font-size: 15px; line-height: 1.6;
+  }
+  .faq-row[open] .faq-a {
+    max-height: 220px;
+    padding-top: 14px;
+  }
+
+  /* ── Final CTA ── */
+  .final {
+    text-align: center;
+    padding: 140px 32px 100px;
+    max-width: 1200px;
+    margin: 0 auto;
+    position: relative;
+  }
+  .final-deco {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse 60% 40% at 50% 30%, var(--ping-dim), transparent 70%);
+    pointer-events: none; z-index: 0;
+  }
+  .final > * { position: relative; z-index: 1; }
+  .final h2 {
+    font-family: var(--serif); font-weight: 500;
+    font-size: clamp(44px, 6vw, 84px);
+    line-height: 1.0;
+    letter-spacing: -0.035em;
+    max-width: 900px; margin: 0 auto 24px;
+  }
+  .final h2 em { color: var(--ping); font-style: italic; }
+  .final p { font-size: 18px; color: var(--text-dim); margin-bottom: 36px; }
+
+  /* ── Footer ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 28px 32px;
+    display: flex; justify-content: space-between; align-items: center;
+    max-width: 1200px; margin: 0 auto;
+    font-size: 12.5px; color: var(--muted);
+  }
+  footer .fl { display: flex; gap: 22px; }
+  footer a { color: var(--muted); text-decoration: none; }
+  footer a:hover { color: var(--text-dim); }
+
+  /* ── Email subscribe ── */
+  .subscribe { max-width: 720px; margin: 0 auto; text-align: center; }
+  .sub-card {
+    margin-top: 40px;
+    background: linear-gradient(180deg, rgba(46,232,160,0.05), transparent 60%), var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 36px 32px;
+    position: relative; overflow: hidden;
+  }
+  .sub-card::before {
+    content: ""; position: absolute; inset: -1px;
+    background: radial-gradient(ellipse at top, var(--ping-line), transparent 70%);
+    opacity: 0.4; pointer-events: none; z-index: 0;
+  }
+  .sub-form {
+    display: grid; grid-template-columns: 1fr auto; gap: 6px;
+    background: var(--bg);
+    border: 1px solid var(--border-b);
+    border-radius: 14px; padding: 6px;
+    transition: border-color .25s, box-shadow .25s;
+    position: relative; z-index: 1;
+  }
+  .sub-form:focus-within { border-color: var(--ping); box-shadow: 0 0 0 3px rgba(46,232,160,0.15); }
+  .sub-form.error { border-color: var(--event); box-shadow: 0 0 0 3px rgba(240,107,93,0.15); animation: subShake .35s; }
+  @keyframes subShake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-6px)} 50%{transform:translateX(6px)} 75%{transform:translateX(-3px)} }
+  .sub-input {
+    background: transparent; border: none; outline: none;
+    color: var(--text); font-family: var(--sans); font-size: 15px;
+    padding: 12px 14px; width: 100%;
+  }
+  .sub-input::placeholder { color: var(--muted); }
+  .sub-btn {
+    background: var(--ping); color: var(--ping-ink);
+    border: none; border-radius: 10px;
+    padding: 12px 22px; font-size: 14px; font-weight: 600;
+    font-family: var(--sans); cursor: pointer;
+    display: inline-flex; align-items: center; gap: 8px;
+    transition: transform .2s, box-shadow .2s, opacity .2s;
+    white-space: nowrap;
+  }
+  .sub-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 8px 24px -8px var(--ping-glow); }
+  .sub-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+  .sub-btn .spin {
+    width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid var(--ping-ink); border-top-color: transparent;
+    animation: subSpin .8s linear infinite;
+  }
+  @keyframes subSpin { to { transform: rotate(360deg); } }
+  .sub-msg { margin-top: 14px; font-size: 13px; min-height: 18px; font-family: var(--mono); color: var(--muted2); position: relative; z-index: 1; }
+  .sub-msg.error { color: var(--event); }
+  .sub-msg.ok { color: var(--ping); }
+  .sub-meta { display: flex; justify-content: center; gap: 18px; margin-top: 22px; font-size: 12px; color: var(--muted2); flex-wrap: wrap; position: relative; z-index: 1; }
+  .sub-meta span { display: inline-flex; align-items: center; gap: 6px; }
+  .sub-meta .pip { width: 6px; height: 6px; border-radius: 50%; background: var(--ping); box-shadow: 0 0 6px var(--ping-glow); }
+  .sub-prefs {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    gap: 8px; margin-top: 18px;
+    position: relative; z-index: 1;
+  }
+  .sub-pref {
+    cursor: pointer;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    text-align: left;
+    transition: all .2s;
+    color: var(--text);
+    font-family: var(--sans);
+    display: flex; flex-direction: column; gap: 3px;
+  }
+  .sub-pref:hover { border-color: var(--border-b); background: var(--bg4); }
+  .sub-pref.active { border-color: var(--ping-line); background: linear-gradient(180deg, rgba(46,232,160,0.08), transparent), var(--bg3); }
+  .sub-pref b { font-size: 13px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+  .sub-pref i { font-style: normal; font-size: 11px; color: var(--muted2); }
+  .sub-pref .check {
+    width: 14px; height: 14px; border-radius: 4px;
+    border: 1.5px solid var(--border-b);
+    display: inline-grid; place-items: center;
+    font-size: 9px; color: var(--ping-ink);
+  }
+  .sub-pref.active .check { background: var(--ping); border-color: var(--ping); }
+  .sub-pref.active .check::after { content: "✓"; }
+  .sub-success {
+    display: none;
+    flex-direction: column; align-items: center; gap: 14px;
+    padding: 12px 8px; text-align: center;
+    position: relative; z-index: 1;
+  }
+  .sub-success.show { display: flex; }
+  .sub-success-icon {
+    width: 56px; height: 56px; border-radius: 50%;
+    background: var(--ping); color: var(--ping-ink);
+    display: grid; place-items: center;
+    box-shadow: 0 0 0 6px rgba(46,232,160,0.12), 0 0 32px var(--ping-glow);
+    animation: subPop .5s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes subPop { 0%{transform:scale(0)} 100%{transform:scale(1)} }
+  .sub-success h3 { font-family: var(--serif); font-size: 28px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.15; }
+  .sub-success h3 em { font-style: italic; color: var(--ping); }
+  .sub-success p { color: var(--text-dim); font-size: 14.5px; max-width: 440px; }
+  .sub-tags { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 4px; }
+  .sub-tag { font-family: var(--mono); font-size: 11px; color: var(--text-dim); background: var(--bg3); border: 1px solid var(--border); padding: 6px 12px; border-radius: 999px; letter-spacing: 0.04em; }
+  .sub-undo {
+    background: transparent; border: 1px solid var(--border-b);
+    color: var(--text-dim); font-family: var(--mono); font-size: 11px;
+    padding: 6px 14px; border-radius: 999px; cursor: pointer;
+    letter-spacing: 0.06em; text-transform: uppercase;
+    transition: all .2s;
+  }
+  .sub-undo:hover { color: var(--text); border-color: var(--muted2); }
+  .sub-counter {
+    margin-top: 22px;
+    padding: 16px 20px;
+    background: var(--bg3); border: 1px solid var(--border); border-radius: 14px;
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    text-align: left;
+    position: relative; z-index: 1;
+  }
+  .sub-counter-cell { display: flex; flex-direction: column; gap: 2px; }
+  .sub-counter-num { font-family: var(--serif); font-weight: 500; font-size: 24px; letter-spacing: -0.02em; color: var(--text); line-height: 1; }
+  .sub-counter-num em { color: var(--ping); font-style: normal; }
+  .sub-counter-lbl { font-family: var(--mono); font-size: 10px; color: var(--muted2); letter-spacing: 0.08em; text-transform: uppercase; }
+  @media (max-width: 720px) {
+    .sub-prefs, .sub-counter { grid-template-columns: 1fr; }
+    .sub-form { grid-template-columns: 1fr; }
+    .sub-btn { width: 100%; justify-content: center; }
+  }
+  /* ── Responsive ── */
+  @media (max-width: 960px) {
+    nav { padding: 12px 20px; }
+    .nav-links { display: none; }
+    section { padding: 80px 20px; }
+    .hero { grid-template-columns: 1fr; padding: 120px 20px 40px; }
+    .hero-demo { height: 500px; }
+    .pillars { grid-template-columns: 1fr; gap: 16px; }
+    .pillar-arrow { display: none; }
+    .problem-grid, .pricing-cards, .engine-examples { grid-template-columns: 1fr; }
+    .fail { border-right: none; border-bottom: 1px solid var(--border); }
+    .fail:last-child { border-bottom: none; }
+    .fx { grid-template-columns: 1fr; }
+    .fx-stage { min-height: 380px; }
+    .fx-replan { grid-template-columns: 1fr; }
+    .fx-replan-arrow { transform: rotate(90deg); justify-self: center; }
+    .try { grid-template-columns: 1fr; }
+    .try-left { border-right: none; border-bottom: 1px solid var(--border); }
+    .compare-row { grid-template-columns: 1.2fr 1fr; gap: 10px; }
+    .compare-row .hide-sm { display: none; }
+    .engine-flow { grid-auto-flow: column; grid-template-columns: none; }
+  }
+</style>
+<link id="gfont-Inter" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&amp;display=swap"></head>
+<body data-new-gr-c-s-check-loaded="14.1284.0" data-gr-ext-installed="" style="cursor: crosshair; font-family: Inter;" data-cc-id="cc-1">
+
+<!-- Ambient -->
+<div class="bg-grid"></div>
+<div class="glow a"></div>
+<div class="glow b"></div>
+<div class="glow c"></div>
+
+<!-- NAV -->
+<nav>
+  <a class="brand" href="#">
+    <span class="brand-mark">
+      <svg width="24" height="24" viewBox="0 0 32 32" fill="none">
+        <circle cx="16" cy="16" r="2.5" fill="currentColor" style="color:var(--ping)"></circle>
+        <circle cx="16" cy="16" r="6" stroke="currentColor" stroke-opacity="0.8" stroke-width="1.2" fill="none" style="color:var(--ping)"></circle>
+        <circle cx="16" cy="16" r="10" stroke="currentColor" stroke-opacity="0.45" stroke-width="1.1" fill="none" style="color:var(--ping)"></circle>
+        <circle cx="16" cy="16" r="14" stroke="currentColor" stroke-opacity="0.22" stroke-width="1" fill="none" style="color:var(--ping)"></circle>
+      </svg>
+    </span>
+    <span class="brand-name">Progress<em>Ping</em></span>
+  </a>
+  <div class="nav-links">
+    <a href="#how">How it works</a>
+    <a href="#try">Try a ping</a>
+    <a href="#features">Features</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#subscribe">Subscribe</a>
+    <a href="#faq">FAQ</a>
+  </div>
+  <a href="#subscribe" class="nav-cta">Start free →</a>
+</nav>
+
+<main>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-left">
+    <div class="badge"><span class="ping-dot"></span> NOW IN EARLY ACCESS · 200+ PEOPLE</div>
+    <h1 class="display">
+      Remind apps beep.<br>
+      ProgressPing <em>pings</em><br>
+      with a plan.
+    </h1>
+    <p class="hero-sub">
+      The AI-powered tracker for your deadlines, goals, and long tasks.
+      Every ping arrives with context, one clear next step, and the exact
+      time it'll take — never just a beep.
+    </p>
+    <div class="hero-actions">
+      <a href="#subscribe" class="btn-primary">
+        Start free
+        <svg class="btn-arrow" viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+      </a>
+      <button class="btn-ghost" onclick="document.getElementById('try').scrollIntoView({behavior:'smooth'})">Try a live ping →</button>
+    </div>
+    <div class="hero-note">
+      <span>Free forever</span><span class="dot"></span>
+      <span>No credit card</span><span class="dot"></span>
+      <span>5 items included</span>
+    </div>
+
+    <div class="proof">
+      <div class="avatars">
+        <span style="background:linear-gradient(135deg,#2EE8A0,#0B8B5F)">KT</span>
+        <span style="background:linear-gradient(135deg,#6E8BFF,#3752C8)">SR</span>
+        <span style="background:linear-gradient(135deg,#F5B748,#C77F12)">AM</span>
+        <span style="background:linear-gradient(135deg,#F06B5D,#A33325)">JN</span>
+      </div>
+      <span>Used by 200+ people to stop dropping things</span>
+    </div>
+  </div>
+
+  <!-- Phone demo -->
+  <div class="hero-demo">
+    <div class="ai-chip"><span class="d"></span> AI classified · <b style="color:var(--text)">event</b></div>
+    <div class="chip-br"><span class="d"></span> Ping scheduled · <b style="color:var(--text)">in 14d</b></div>
+    <div class="demo-frame">
+      <div class="demo-screen">
+        <div class="demo-header">
+          <span>10:21 · Tue 21</span>
+          <span class="live"><span class="ping-dot"></span>3 new pings</span>
+        </div>
+        <div class="demo-stream">
+          <div class="n event" style="animation-delay:.05s">
+            <div class="n-top"><span class="n-tag">● Event · 30d</span><span class="n-time">08:00</span></div>
+            <div class="n-title">Driving licence renewal</div>
+            <div class="n-body">Fee <b>¥2,500</b> · Processing ~2w · Nearest centre 3.2 km · Bring licence, passport, 1 photo.</div>
+          </div>
+          <div class="n goal" style="animation-delay:.15s">
+            <div class="n-top"><span class="n-tag">● Goal · Wk 4</span><span class="n-time">09:00</span></div>
+            <div class="n-title">Save $10k in 3 years · on track</div>
+            <div class="n-body">This week: automate transfer on payday. Next milestone <b>$835 by May 15</b>.</div>
+          </div>
+          <div class="n task" style="animation-delay:.25s">
+            <div class="n-top"><span class="n-tag">● Task · 3/8</span><span class="n-time">17:30</span></div>
+            <div class="n-title">Launch personal website</div>
+            <div class="n-body">Today (<b>25 min</b>): write bio under 80 words, third person. Write it last.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Logo strip -->
+<div class="strip">
+  <span>Loved by makers at</span>
+  <span class="sep">/</span>
+  <span>Linear · Arc · Superhuman · Raycast · Readwise · Pika · Craft</span>
+</div>
+
+<!-- PROBLEM -->
+<section id="problem">
+  <div class="eyebrow">The problem</div>
+  <h2 class="section-title">Most apps <em>remind</em> you.<br>None of them <em>help</em> you.</h2>
+  <p class="lede">
+    A beep is not a plan. Calendar pings don't tell you what to bring.
+    Goal apps don't tell you what to do this week. To-do apps don't
+    break anything down. ProgressPing does all three.
+  </p>
+
+  <div class="problem-grid">
+    <div class="fail">
+      <div class="fail-num">01</div>
+      <div class="fail-h">Deadlines catch you <span class="strike">off guard</span></div>
+      <div class="fail-p">Your passport expires in 2 weeks. <b>ProgressPing pinged you four months ago</b> — with the fee, processing time, nearest office, and what to bring.</div>
+    </div>
+    <div class="fail">
+      <div class="fail-num">02</div>
+      <div class="fail-h">Goals stall after <span class="strike">week one</span></div>
+      <div class="fail-p">Set a goal, feel great, forget it. <b>ProgressPing builds a milestone roadmap</b> and checks in weekly with one actionable tip — never a lecture.</div>
+    </div>
+    <div class="fail">
+      <div class="fail-num">03</div>
+      <div class="fail-h">Big tasks stay on the <span class="strike">to-do list</span></div>
+      <div class="fail-p">"Launch a website" isn't a task. <b>ProgressPing breaks it into 8 steps</b> with time estimates and pings you one step at a time.</div>
+    </div>
+  </div>
+</section>
+
+<!-- HOW IT WORKS / PILLARS -->
+<section id="how">
+  <div class="eyebrow">Three pillars · one ping engine</div>
+  <h2 class="section-title">Built around how<br>life actually <em>arrives</em>.</h2>
+  <p class="lede">Events have deadlines. Goals have horizons. Tasks have steps. Each needs a different kind of intelligence — and a different kind of ping.</p>
+
+  <div class="pillars">
+    <div class="pillar p-event">
+      <div class="pillar-head">
+        <div class="pillar-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.4"></rect><path d="M5 1v4M11 1v4M2 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg></div>
+        <div class="pillar-title">Smart events</div>
+      </div>
+      <div class="pillar-sub">Deadline reminders</div>
+      <div class="pillar-row"><div class="row-num">01</div><div><div class="row-title">Add event</div><div class="row-desc">Date, category, notes. 30 seconds.</div></div></div>
+      <div class="pillar-row"><div class="row-num">02</div><div><div class="row-title">AI enrichment</div><div class="row-desc">Fees, wait times, required docs.</div></div></div>
+      <div class="pillar-row"><div class="row-num">03</div><div><div class="row-title">Smart ping</div><div class="row-desc">30d · 7d · 1d alerts, calibrated.</div></div></div>
+      <div class="pillar-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8m-3-3 3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    </div>
+    <div class="pillar p-goal">
+      <div class="pillar-head">
+        <div class="pillar-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"></circle><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.4"></circle></svg></div>
+        <div class="pillar-title">Goal coach</div>
+      </div>
+      <div class="pillar-sub">AI-guided achievement</div>
+      <div class="pillar-row"><div class="row-num">01</div><div><div class="row-title">Set goal</div><div class="row-desc">Target, timeline, type.</div></div></div>
+      <div class="pillar-row"><div class="row-num">02</div><div><div class="row-title">AI roadmap</div><div class="row-desc">Milestones + weekly tips.</div></div></div>
+      <div class="pillar-row"><div class="row-num">03</div><div><div class="row-title">Progress ping</div><div class="row-desc">Check-in + adapt if you fall behind.</div></div></div>
+      <div class="pillar-arrow"><svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 6h8m-3-3 3 3-3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"></path></svg></div>
+    </div>
+    <div class="pillar p-task">
+      <div class="pillar-head">
+        <div class="pillar-icon"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg></div>
+        <div class="pillar-title">Task breaker</div>
+      </div>
+      <div class="pillar-sub">AI task decomposition</div>
+      <div class="pillar-row"><div class="row-num">01</div><div><div class="row-title">Add task</div><div class="row-desc">Title, deadline, context.</div></div></div>
+      <div class="pillar-row"><div class="row-num">02</div><div><div class="row-title">AI subtasks</div><div class="row-desc">5–12 steps + time estimates.</div></div></div>
+      <div class="pillar-row"><div class="row-num">03</div><div><div class="row-title">Daily ping</div><div class="row-desc">Next step, on-track check.</div></div></div>
+    </div>
+  </div>
+
+  <div class="pillar-foot">All three share one <b>AI ping engine</b> and one unified notification system</div>
+
+  <!-- Engine diagram -->
+  <div class="engine">
+    <div class="engine-title">How the AI ping engine works</div>
+    <div class="engine-flow">
+      <div class="node"><div class="node-label">You type it</div><div class="node-sub">event / goal / task</div></div>
+      <div class="arrow">→</div>
+      <div class="node highlight-task"><div class="node-label">AI classifies</div><div class="node-sub">type · urgency · domain</div></div>
+      <div class="arrow">→</div>
+      <div class="node highlight-task"><div class="node-label">AI enriches</div><div class="node-sub">context · tips · steps</div></div>
+      <div class="arrow">→</div>
+      <div class="node highlight-ping"><div class="node-label">Ping scheduled</div><div class="node-sub">delivered on time</div></div>
+    </div>
+
+    <div class="engine-examples">
+      <div class="ex event">
+        <div class="ex-head"><span>Event ping</span><span>30d</span></div>
+        <div class="ex-title">Driving licence renewal</div>
+        <div class="ex-body">Fee ¥2,500 · Wait 2 weeks · Nearest centre 3.2 km · Docs: licence, passport, 1 photo.</div>
+      </div>
+      <div class="ex goal">
+        <div class="ex-head"><span>Goal ping</span><span>on track</span></div>
+        <div class="ex-title">Save $10k in 3 years</div>
+        <div class="ex-body">Week 4 check-in · Target $278/mo · Tip: cancel unused subs · Next milestone $835.</div>
+      </div>
+      <div class="ex task">
+        <div class="ex-head"><span>Task ping</span><span>3 / 8</span></div>
+        <div class="ex-title">Launch personal website</div>
+        <div class="ex-body">Today's step: write bio · Est. time 25 min · 4 days ahead of schedule.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- TRY IT -->
+<section id="try">
+  <div class="eyebrow">Try a ping · powered by Claude</div>
+  <h2 class="section-title">Type something you've been <em>avoiding</em>.</h2>
+  <p class="lede">Describe a deadline, a goal, or a big task — in your own words — and watch AI turn it into a ping you'd actually want to receive.</p>
+
+  <div class="try">
+    <div class="try-left">
+      <div class="try-h">What's on your mind?</div>
+      <div class="try-p">No signup needed. Runs live. Nothing is saved.</div>
+
+      <div class="try-tabs">
+        <button class="try-tab active" data-type="event"><span class="tdot"></span>Event</button>
+        <button class="try-tab" data-type="goal"><span class="tdot"></span>Goal</button>
+        <button class="try-tab" data-type="task"><span class="tdot"></span>Task</button>
+      </div>
+
+      <input class="try-input" id="tryInput" placeholder="e.g. Renew my passport in March">
+
+      <div class="try-suggest" id="trySuggest"><button class="try-chip">Renew my passport in March</button><button class="try-chip">Dentist check-up next month</button><button class="try-chip">Car insurance renewal in 6 weeks</button><button class="try-chip">Tax filing deadline April 15</button></div>
+
+      <button class="try-gen" id="tryGen">
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 2v12M2 8h12M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"></path></svg>
+        Generate my ping
+      </button>
+    </div>
+
+    <div class="try-right">
+      <div class="try-right-head">
+        <span class="ping-dot"></span> AI-generated ping preview
+      </div>
+      <div class="try-output" id="tryOutput">
+        <div class="try-placeholder">
+          <span class="big">"and then what?"</span>
+          Your ping will appear here — with the context, plan, and next step that ProgressPing would actually send.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- COMPARE -->
+<section id="compare">
+  <div class="eyebrow">Why ProgressPing</div>
+  <h2 class="section-title">Reminder apps stop<br>where <em>we begin</em>.</h2>
+
+  <div class="compare">
+    <div class="compare-row head">
+      <div>Capability</div>
+      <div class="hide-sm">Calendar app</div>
+      <div class="hide-sm">To-do app</div>
+      <div class="pp">ProgressPing</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">Tells you the deadline</div>
+      <div class="compare-cell hide-sm"><span class="check">✓</span> Yes</div>
+      <div class="compare-cell hide-sm"><span class="check">✓</span> Yes</div>
+      <div class="compare-cell pp"><span class="check">✓</span> Yes</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">Looks up what you'll need</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> Never</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> Never</div>
+      <div class="compare-cell pp"><span class="check">✓</span> Fees, docs, wait times</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">Breaks big tasks into steps</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> —</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> You do it manually</div>
+      <div class="compare-cell pp"><span class="check">✓</span> AI splits into 5–12 steps</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">Adapts when you fall behind</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> Deadline just passes</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> Overdue pile</div>
+      <div class="compare-cell pp"><span class="check">✓</span> Replans, no judgment</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">Weekly coaching on goals</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span></div>
+      <div class="compare-cell hide-sm"><span class="x">×</span></div>
+      <div class="compare-cell pp"><span class="check">✓</span> One actionable tip/week</div>
+    </div>
+    <div class="compare-row">
+      <div class="compare-label">Pings timed for when you can act</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> Same-day beep</div>
+      <div class="compare-cell hide-sm"><span class="x">×</span> You set it</div>
+      <div class="compare-cell pp"><span class="check">✓</span> Multi-wave, calibrated</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES (interactive) -->
+<section id="features">
+  <div class="eyebrow">Features</div>
+  <h2 class="section-title">Everything you need.<br><em>Nothing</em> you don't.</h2>
+  <p class="lede">Pick a feature to see it in action — each demo updates live.</p>
+
+  <div class="fx">
+    <div class="fx-tabs" role="tablist">
+      <button class="fx-tab active" data-fx="events" role="tab">
+        <span class="fx-tab-icon ic-event"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><rect x="2" y="3" width="12" height="11" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 1v4M11 1v4M2 7h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        <span class="fx-tab-text"><b>Smart event tracker</b><i>AI-enriched deadline pings</i></span>
+        <span class="fx-tab-caret">→</span>
+      </button>
+      <button class="fx-tab" data-fx="goals" role="tab">
+        <span class="fx-tab-icon ic-goal"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="8" r="2.5" stroke="currentColor" stroke-width="1.4"/></svg></span>
+        <span class="fx-tab-text"><b>AI goal coach</b><i>Weekly, actionable, no lectures</i></span>
+        <span class="fx-tab-caret">→</span>
+      </button>
+      <button class="fx-tab" data-fx="tasks" role="tab">
+        <span class="fx-tab-icon ic-task"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        <span class="fx-tab-text"><b>Task breaker</b><i>Big tasks → 5–12 real steps</i></span>
+        <span class="fx-tab-caret">→</span>
+      </button>
+      <button class="fx-tab" data-fx="schedule" role="tab">
+        <span class="fx-tab-icon ic-amber"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" stroke-width="1.4"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></span>
+        <span class="fx-tab-text"><b>Adaptive scheduling</b><i>Multi-wave, timed to act</i></span>
+        <span class="fx-tab-caret">→</span>
+      </button>
+      <button class="fx-tab" data-fx="dash" role="tab">
+        <span class="fx-tab-icon ic-goal"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="3" fill="currentColor"/><circle cx="8" cy="8" r="6" stroke="currentColor" stroke-width="1.1" opacity="0.5"/></svg></span>
+        <span class="fx-tab-text"><b>Unified dashboard</b><i>Events, goals, tasks — one view</i></span>
+        <span class="fx-tab-caret">→</span>
+      </button>
+      <button class="fx-tab" data-fx="replan" role="tab">
+        <span class="fx-tab-icon ic-task"><svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M2 11l3-3 2 2 4-5 3 3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="fx-tab-text"><b>Pings that replan</b><i>Fall behind? AI adjusts.</i></span>
+        <span class="fx-tab-caret">→</span>
+      </button>
+    </div>
+
+    <div class="fx-stage">
+      <div class="fx-stage-head">
+        <span class="ping-dot"></span>
+        <span id="fxLabel">Smart event tracker · live demo</span>
+      </div>
+      <div class="fx-stage-body" id="fxBody">
+        <!-- panels injected by JS -->
+      </div>
+      <div class="fx-stage-foot">
+        <span id="fxCaption">AI enriches every event with the context you'd have had to Google yourself.</span>
+        <div class="fx-dots" id="fxDots"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section id="pricing" class="pricing">
+  <div class="eyebrow">Pricing</div>
+  <h2 class="section-title" style="text-align:center;margin-left:auto;margin-right:auto">Start free.<br>Upgrade when it's <em>earned your trust.</em></h2>
+
+  <div class="pricing-cards">
+    <div class="p-card">
+      <div class="p-tier">Free</div>
+      <div class="p-amt">$0 <span>/ month</span></div>
+      <div class="p-desc">For trying it out</div>
+      <ul class="p-list">
+        <li><span class="c">✓</span> Up to 5 active items</li>
+        <li><span class="c">✓</span> All three pillars</li>
+        <li><span class="c">✓</span> Email pings</li>
+        <li><span class="c">✓</span> AI enrichment</li>
+        <li><span class="x">–</span> Push notifications</li>
+        <li><span class="x">–</span> Priority AI</li>
+      </ul>
+      <button class="p-btn out">Get started</button>
+    </div>
+    <div class="p-card featured">
+      <span class="pill">Most popular</span>
+      <div class="p-tier">Pro</div>
+      <div class="p-amt">$8 <span>/ month</span></div>
+      <div class="p-desc">For getting things done</div>
+      <ul class="p-list">
+        <li><span class="c">✓</span> Unlimited items</li>
+        <li><span class="c">✓</span> All three pillars</li>
+        <li><span class="c">✓</span> Email + push pings</li>
+        <li><span class="c">✓</span> Priority AI responses</li>
+        <li><span class="c">✓</span> Goal re-planning</li>
+        <li><span class="c">✓</span> SMS pings (soon)</li>
+      </ul>
+      <button class="p-btn fill">Start 14-day Pro trial</button>
+    </div>
+    <div class="p-card">
+      <div class="p-tier">Lifetime</div>
+      <div class="p-amt">$49 <span>once</span></div>
+      <div class="p-desc">For early believers</div>
+      <ul class="p-list">
+        <li><span class="c">✓</span> Everything in Pro</li>
+        <li><span class="c">✓</span> All future features</li>
+        <li><span class="c">✓</span> Early access to modules</li>
+        <li><span class="c">✓</span> Founding-member badge</li>
+        <li><span class="c">✓</span> Direct feedback channel</li>
+        <li><span class="c">✓</span> Pay once, use forever</li>
+      </ul>
+      <button class="p-btn out">Get lifetime access</button>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section id="faq">
+  <div class="eyebrow" style="text-align:center;display:block;margin:0 auto 18px;width:fit-content">Questions</div>
+  <h2 class="section-title" style="text-align:center">Good questions,<br>short answers.</h2>
+
+  <div class="faq" style="margin-top:56px">
+    <details class="faq-row">
+      <summary class="faq-q"><h3>How is this different from a calendar or to-do list?</h3>
+        <span class="faq-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></span>
+      </summary>
+      <div class="faq-a">Calendars remind. To-do lists collect. ProgressPing thinks. It looks up what you'll need, breaks big tasks down, and sends pings timed to when you can act — not just when the day arrives.</div>
+    </details>
+    <details class="faq-row">
+      <summary class="faq-q"><h3>What AI do you use?</h3>
+        <span class="faq-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></span>
+      </summary>
+      <div class="faq-a">Claude handles classification, enrichment, and planning. Your data never trains a third-party model. You can delete everything with one click.</div>
+    </details>
+    <details class="faq-row">
+      <summary class="faq-q"><h3>How do pings arrive?</h3>
+        <span class="faq-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></span>
+      </summary>
+      <div class="faq-a">Email and web push today; iOS/Android push and SMS rolling out through Pro in Q3. You choose per-item which channels are active.</div>
+    </details>
+    <details class="faq-row">
+      <summary class="faq-q"><h3>What if my plan changes?</h3>
+        <span class="faq-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></span>
+      </summary>
+      <div class="faq-a">Tell ProgressPing you're running behind, ahead, or want to pivot — it re-runs the plan and re-schedules pings. No shame, no streak loss, no rebuild.</div>
+    </details>
+    <details class="faq-row">
+      <summary class="faq-q"><h3>Can I cancel any time?</h3>
+        <span class="faq-toggle"><svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path></svg></span>
+      </summary>
+      <div class="faq-a">Yes. Free forever with 5 items. Pro is month-to-month; Lifetime is a one-time purchase. Export your data any time as CSV or JSON.</div>
+    </details>
+  </div>
+</section>
+
+<!-- EMAIL SUBSCRIBE -->
+<section id="subscribe">
+  <div class="subscribe">
+    <div class="eyebrow" style="display:inline-flex;margin:0 auto 18px">Get on the list</div>
+    <h2 class="section-title" style="text-align:center">Be first to <em>ping</em><br>when we open the doors.</h2>
+    <p class="lede" style="text-align:center;margin-left:auto;margin-right:auto">Join the early-access list. We'll send one email when your seat is ready, plus an occasional ping about new modules. No spam, no drip campaigns, no dark patterns.</p>
+
+    <div class="sub-card" id="subCard">
+      <form class="sub-form" id="subForm" novalidate>
+        <input type="email" class="sub-input" id="subEmail" placeholder="you@somewhere.com" autocomplete="email" required>
+        <button type="submit" class="sub-btn" id="subBtn">
+          <span class="sub-btn-label">Send my invite →</span>
+        </button>
+      </form>
+      <div class="sub-msg" id="subMsg">Free forever tier · cancel anytime · we'll never share your email.</div>
+
+      <div class="sub-prefs" id="subPrefs">
+        <button type="button" class="sub-pref active" data-pref="launch">
+          <b><span class="check"></span> Launch invite</b>
+          <i>One email when your seat opens</i>
+        </button>
+        <button type="button" class="sub-pref active" data-pref="weekly">
+          <b><span class="check"></span> Weekly digest</b>
+          <i>One ping recap, every Friday</i>
+        </button>
+        <button type="button" class="sub-pref" data-pref="builds">
+          <b><span class="check"></span> Build notes</b>
+          <i>Behind-the-scenes</i>
+        </button>
+      </div>
+
+      <div class="sub-success" id="subSuccess">
+        <div class="sub-success-icon">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none"><path d="M5 12l5 5L20 7" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+        </div>
+        <h3>You're on the list, <em id="subName">friend</em>.</h3>
+        <p id="subSuccessP">Check <b id="subEmailEcho">your inbox</b> in a minute — we just sent a confirmation. Your invite arrives the moment we open seats (target: Q3).</p>
+        <div class="sub-tags" id="subTags"></div>
+        <button type="button" class="sub-undo" id="subUndo">Undo subscription</button>
+      </div>
+
+      <div class="sub-counter">
+        <div class="sub-counter-cell">
+          <div class="sub-counter-num"><em id="subCount">218</em></div>
+          <div class="sub-counter-lbl">on the list</div>
+        </div>
+        <div class="sub-counter-cell">
+          <div class="sub-counter-num"><span id="subToday">7</span></div>
+          <div class="sub-counter-lbl">joined today</div>
+        </div>
+        <div class="sub-counter-cell">
+          <div class="sub-counter-num">~<span id="subWait">14</span>d</div>
+          <div class="sub-counter-lbl">avg wait time</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sub-meta">
+      <span><span class="pip"></span> 218 subscribed</span>
+      <span>·</span>
+      <span>Built for everywhere</span>
+      <span>·</span>
+      <span>Unsubscribe in one click</span>
+    </div>
+  </div>
+</section>
+
+<!-- FINAL CTA -->
+<div class="final">
+  <div class="final-deco"></div>
+  <h2>Stop <span style="text-decoration:line-through;text-decoration-color:var(--event);color:var(--muted2)">forgetting</span> things.<br>Start <em>doing</em> them.</h2>
+  <p>ProgressPing takes 30 seconds to set up. Your first ping works the moment you add your first item.</p>
+  <div class="hero-actions" style="justify-content:center">
+    <a href="#subscribe" class="btn-primary">Start free — no card needed
+      <svg class="btn-arrow" viewBox="0 0 24 24" fill="none"><path d="M5 12h14m-5-5 5 5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path></svg>
+    </a>
+  </div>
+  <p style="margin-top:20px;font-size:13px;color:var(--muted);font-family:var(--mono)">
+    200+ people in early access
+  </p>
+</div>
+
+<footer>
+  <div style="display:flex;align-items:center;gap:8px">
+    <svg width="16" height="16" viewBox="0 0 32 32" fill="none">
+      <circle cx="16" cy="16" r="2.5" fill="var(--ping)"></circle>
+      <circle cx="16" cy="16" r="6" stroke="var(--ping)" stroke-opacity="0.8" stroke-width="1.2" fill="none"></circle>
+      <circle cx="16" cy="16" r="10" stroke="var(--ping)" stroke-opacity="0.45" stroke-width="1" fill="none"></circle>
+    </svg>
+    <span>ProgressPing ©2026</span>
+  </div>
+  <div class="fl">
+    <a href="#">Privacy</a>
+    <a href="#">Terms</a>
+    <a href="#">Changelog</a>
+    <a href="#">Contact</a>
+    <a href="#">Twitter</a>
+  </div>
+</footer>
+
+</main>
+
+<script>
+  /* ── Interactive "Try a ping" ── */
+  const TRY_DATA = {
+    event: {
+      suggestions: [
+        "Renew my passport in March",
+        "Dentist check-up next month",
+        "Car insurance renewal in 6 weeks",
+        "Tax filing deadline April 15"
+      ],
+      generate(input){
+        const title = input || "Renew my passport in March";
+        const presets = {
+          "Renew my passport in March": {
+            badge: "30 days", meta: "Due Mar 15, 2026 · AI classified",
+            ai: [
+              "Standard 10-year renewal fee: ¥16,000.",
+              "Processing time: 6–8 working days.",
+              "Bring: old passport, 1 recent photo, residence card.",
+              "Apply by Mar 7 to guarantee delivery before the deadline."
+            ]
+          },
+          "Dentist check-up next month": {
+            badge: "28 days", meta: "Due Jun 8, 2026 · AI classified",
+            ai: [
+              "Last visit was 6 months ago — routine clean + check.",
+              "Appointment length: ~30 min.",
+              "Bring insurance card — covers 70% of standard check-up.",
+              "Book now: clinics fill 2–3 weeks out."
+            ]
+          },
+          "Car insurance renewal in 6 weeks": {
+            badge: "42 days", meta: "Due Jun 22, 2026 · AI classified",
+            ai: [
+              "Current policy expires Jun 22 — gap in cover = fine risk.",
+              "Tip: compare quotes 30 days out for best rates.",
+              "Last year's premium: ¥68,400 — market avg dropped ~4%.",
+              "Switch deadline to avoid admin fee: 7 days before expiry."
+            ]
+          },
+          "Tax filing deadline April 15": {
+            badge: "14 days", meta: "Due Apr 15, 2026 · AI classified",
+            ai: [
+              "Deadline: Apr 15 — penalty starts at 0.5%/month if late.",
+              "Documents needed: W-2, 1099s, last year's return.",
+              "Free e-file available if income under $79,000.",
+              "Extension request buys 6 months — but tax still due Apr 15."
+            ]
+          }
+        };
+        const p = presets[title] || presets["Renew my passport in March"];
+        return { type: "event", badge: p.badge, color: "var(--event)", title, meta: p.meta, ai: p.ai };
+      }
+    },
+    goal: {
+      suggestions: [
+        "Save $10k in 3 years",
+        "Run a half marathon by October",
+        "Read 24 books this year",
+        "Learn conversational Japanese in 12 months"
+      ],
+      generate(input){
+        const title = input || "Save $10k in 3 years";
+        const presets = {
+          "Run a half marathon by October": {
+            badge: "on track", meta: "Week 6 of 22 · 3 runs/week",
+            ai: [
+              "This week: 2× easy 5 km + 1× long run (10 km target).",
+              "Next milestone: 15 km long run by June 20.",
+              "Rest day today — legs need 48 h after yesterday's tempo.",
+              "Pace trend: avg 5:42/km, down 12 sec from last month."
+            ]
+          },
+          "Read 24 books this year": {
+            badge: "1 book behind", meta: "Book 7 of 24 · ~2/month",
+            ai: [
+              "You need 1 book in the next 18 days to get back on pace.",
+              "Current book: 63% done — about 1.5 h of reading left.",
+              "Tip: 20 min before bed gets you a book every 10 days.",
+              "Genre mix so far: 4 fiction, 3 non-fiction."
+            ]
+          },
+          "Save $10k in 3 years": {
+            badge: "on track", meta: "Week 4 of 156 · $278/mo target",
+            ai: [
+              "This week's tip: automate the transfer on your payday.",
+              "Next milestone: $835 saved by May 15.",
+              "If you miss a month, I'll extend target by 2 weeks — no streak lost.",
+              "Pace: +3% ahead of 3-year average."
+            ]
+          },
+          "Learn conversational Japanese in 12 months": {
+            badge: "on track", meta: "Month 3 of 12 · 30 min/day",
+            ai: [
+              "Today: review JLPT N5 vocab set 4 (20 cards).",
+              "You've learned 312 words — target for month 3 is 350.",
+              "Streak: 18 days. Miss today and the streak resets.",
+              "Next milestone: hold a 2-min self-intro by end of month."
+            ]
+          }
+        };
+        const p = presets[title] || presets["Save $10k in 3 years"];
+        return { type: "goal", badge: p.badge, color: "var(--goal)", title, meta: p.meta, ai: p.ai };
+      }
+    },
+    task: {
+      suggestions: [
+        "Launch my personal website",
+        "Write a 5-page short story",
+        "Plan a 10-day trip to Portugal",
+        "Move apartments next month"
+      ],
+      generate(input){
+        const title = input || "Launch my personal website";
+        const presets = {
+          "Launch my personal website": {
+            badge: "step 3 / 8", meta: "Today · 25 min estimated",
+            ai: [
+              "Current step: write bio — keep it under 80 words.",
+              "Tip: write it last, after you've chosen your projects.",
+              "Next step (tomorrow): pick 3 projects to showcase (20 min).",
+              "You're 4 days ahead of your original launch date."
+            ]
+          },
+          "Write a 5-page short story": {
+            badge: "step 2 / 5", meta: "Today · 40 min estimated",
+            ai: [
+              "Current step: draft the opening scene — set the hook by page 1.",
+              "Target word count today: 400 words (≈ 2 pages).",
+              "Tip: don't edit while drafting — finish the full pass first.",
+              "You've written 3 sessions in a row — keep the streak."
+            ]
+          },
+          "Plan a 10-day trip to Portugal": {
+            badge: "step 4 / 9", meta: "Today · 30 min estimated",
+            ai: [
+              "Current step: book accommodation for Porto (nights 4–6).",
+              "Prices are 12% higher on weekends — book Sun–Thu.",
+              "Next step: plan day-trip to Sintra (train, ~40 min from Lisbon).",
+              "Flights confirmed — accommodation is the last critical item."
+            ]
+          },
+          "Move apartments next month": {
+            badge: "step 5 / 11", meta: "Today · 20 min estimated",
+            ai: [
+              "Current step: notify current landlord in writing today.",
+              "Notice period: 30 days — today is the last safe day to send.",
+              "Next step: book moving truck for Jun 28 (weekend slots fill fast).",
+              "Utilities transfer request takes 3–5 business days."
+            ]
+          }
+        };
+        const p = presets[title] || presets["Launch my personal website"];
+        return { type: "task", badge: p.badge, color: "var(--task)", title, meta: p.meta, ai: p.ai };
+      }
+    }
+  };
+
+  let currentType = "event";
+  const tryInput = document.getElementById("tryInput");
+  const trySuggest = document.getElementById("trySuggest");
+  const tryOutput = document.getElementById("tryOutput");
+  const tryGen = document.getElementById("tryGen");
+  const tabs = document.querySelectorAll(".try-tab");
+
+  function renderSuggestions(){
+    trySuggest.innerHTML = "";
+    TRY_DATA[currentType].suggestions.forEach(s => {
+      const b = document.createElement("button");
+      b.className = "try-chip";
+      b.textContent = s;
+      b.onclick = () => { tryInput.value = s; tryInput.focus(); };
+      trySuggest.appendChild(b);
+    });
+    tryInput.placeholder = `e.g. ${TRY_DATA[currentType].suggestions[0]}`;
+  }
+  renderSuggestions();
+
+  tabs.forEach(t => t.addEventListener("click", () => {
+    tabs.forEach(x => x.classList.remove("active"));
+    t.classList.add("active");
+    currentType = t.dataset.type;
+    renderSuggestions();
+  }));
+
+  function renderOutput(data, loading){
+    if (loading) {
+      tryOutput.innerHTML = `
+        <div class="try-placeholder" style="margin:auto">
+          <span class="big">Thinking…</span>
+          <div style="color:var(--text-dim);margin-top:10px">
+            Classifying · enriching · scheduling
+            <span class="typing"><i></i><i></i><i></i></span>
+          </div>
+        </div>`;
+      return;
+    }
+    const colorVar = data.type === 'event' ? 'var(--event)' : data.type === 'goal' ? 'var(--goal)' : 'var(--task)';
+    tryOutput.innerHTML = `
+      <div class="out-header">
+        <span class="out-type" style="color:${colorVar}">● ${data.type.toUpperCase()}</span>
+        <span class="out-badge" style="background:${colorVar}20;color:${colorVar}">${data.badge}</span>
+      </div>
+      <div class="out-title">${data.title}</div>
+      <div class="out-meta">${data.meta}</div>
+      <div class="out-ai" style="border-left-color:${colorVar}">
+        <span class="label" style="color:${colorVar}">AI-enriched ping</span>
+        <ul>${data.ai.map(l => `<li>${l}</li>`).join("")}</ul>
+      </div>
+    `;
+  }
+
+  async function generatePing(){
+    const input = (tryInput.value || "").trim();
+    tryGen.disabled = true;
+    renderOutput(null, true);
+
+    // Try Claude; fall back to canned data on any error.
+    const local = TRY_DATA[currentType].generate(input);
+    try {
+      if (!input) throw new Error("empty");
+      const prompt = `You are ProgressPing. The user said: "${input}". This is a ${currentType}.
+Return ONLY a JSON object with keys: badge (short status), title (<=50 chars), meta (one line with timing), ai (array of 3-4 short bullet sentences, each concrete, <=90 chars).
+No markdown, just JSON.`;
+      const raw = await Promise.race([
+        window.claude.complete(prompt),
+        new Promise((_,r) => setTimeout(()=>r(new Error("timeout")), 7000))
+      ]);
+      const m = String(raw).match(/\{[\s\S]*\}/);
+      if (!m) throw new Error("no json");
+      const parsed = JSON.parse(m[0]);
+      const data = {
+        type: currentType,
+        badge: String(parsed.badge || local.badge).slice(0, 24),
+        color: local.color,
+        title: String(parsed.title || input).slice(0, 80),
+        meta: String(parsed.meta || local.meta).slice(0, 80),
+        ai: Array.isArray(parsed.ai) && parsed.ai.length ? parsed.ai.slice(0,4).map(x=>String(x)) : local.ai
+      };
+      renderOutput(data, false);
+    } catch (e) {
+      renderOutput(local, false);
+    } finally {
+      tryGen.disabled = false;
+    }
+  }
+
+  tryGen.addEventListener("click", generatePing);
+  tryInput.addEventListener("keydown", (e) => { if (e.key === "Enter") generatePing(); });
+
+  /* ── FAQ accordion (progressive enhancement over <details>) ── */
+  /* native <details> handles open/close; CSS animates via [open] */
+
+  /* ── Features explorer ── */
+  const FX_ORDER = ["events", "goals", "tasks", "schedule", "dash", "replan"];
+  const FX = {
+    events: {
+      label: "Smart event tracker · live demo",
+      caption: "AI enriches every event with the context you'd have had to Google yourself.",
+      render() {
+        return `
+          <div class="fx-notif event">
+            <div class="fx-notif-top"><span>● Event · 30 days</span><span>08:00 Tue 21</span></div>
+            <div class="fx-notif-title">Driving licence renewal</div>
+            <div class="fx-notif-body">Fee <b>¥2,500</b> (credit card OK) · Processing <b>~2 weeks</b> · Nearest centre <b>3.2 km</b> (Chuo Ward). Bring licence, passport, 1 recent photo (4×3 cm).</div>
+          </div>
+          <div class="fx-notif event">
+            <div class="fx-notif-top"><span>● Event · 14 days</span><span>Tomorrow</span></div>
+            <div class="fx-notif-title">Apartment lease renewal</div>
+            <div class="fx-notif-body">Respond by <b>May 5</b>. Market rent in your area moved <b>+3.1%</b>. Email draft ready if you want to negotiate.</div>
+          </div>
+          <div class="fx-notif event">
+            <div class="fx-notif-top"><span>● Event · 5 days</span><span>Fri 09:00</span></div>
+            <div class="fx-notif-title">Dentist check-up</div>
+            <div class="fx-notif-body">Tokyo Dental, 2F · ~20 min appt · Bring insurance card. Last visit 6 months ago.</div>
+          </div>
+        `;
+      }
+    },
+    goals: {
+      label: "AI goal coach · live demo",
+      caption: "One actionable tip per check-in. No lectures, no streaks to break.",
+      render() {
+        return `
+          <div class="fx-notif goal">
+            <div class="fx-notif-top"><span>● Goal · Week 4 of 156</span><span>on track</span></div>
+            <div class="fx-notif-title">Save $10,000 in 3 years</div>
+            <div class="fx-notif-body"><b>This week's tip:</b> automate your transfer on payday — people who automate save 2.3× more. Next milestone <b>$835 by May 15</b>.</div>
+          </div>
+          <div class="fx-timeline">
+            <div class="fx-timeline-head"><span>Milestone roadmap</span><span>$835 / $10,000</span></div>
+            <div class="fx-timeline-bar">
+              <div class="fx-timeline-fill" style="width:8.3%"></div>
+              <div class="fx-timeline-marker" style="left:0%"><div class="fx-timeline-dot fired"></div><div class="fx-timeline-label">Start</div></div>
+              <div class="fx-timeline-marker" style="left:8.3%"><div class="fx-timeline-dot now"></div><div class="fx-timeline-label">Now · $835</div></div>
+              <div class="fx-timeline-marker" style="left:33%"><div class="fx-timeline-dot"></div><div class="fx-timeline-label">Yr 1 · $3.3k</div></div>
+              <div class="fx-timeline-marker" style="left:66%"><div class="fx-timeline-dot"></div><div class="fx-timeline-label">Yr 2 · $6.6k</div></div>
+              <div class="fx-timeline-marker" style="left:100%"><div class="fx-timeline-dot"></div><div class="fx-timeline-label">Yr 3 · $10k</div></div>
+            </div>
+          </div>
+        `;
+      }
+    },
+    tasks: {
+      label: "Task breaker · live demo",
+      caption: "AI splits big tasks into 5–12 concrete steps with time estimates.",
+      render() {
+        return `
+          <div class="fx-notif task">
+            <div class="fx-notif-top"><span>● Task · Step 3 of 8</span><span>Today · 25 min</span></div>
+            <div class="fx-notif-title">Launch personal website</div>
+            <div class="fx-notif-body">Today's step: <b>write bio</b>, under 80 words, third person. Tip: write it last, after picking your showcase projects.</div>
+          </div>
+          <div class="fx-steps">
+            <div class="fx-step done"><div class="fx-step-check">✓</div><div class="fx-step-title">Buy domain</div><div class="fx-step-meta">15 min</div></div>
+            <div class="fx-step done"><div class="fx-step-check">✓</div><div class="fx-step-title">Pick template</div><div class="fx-step-meta">30 min</div></div>
+            <div class="fx-step current"><div class="fx-step-check">3</div><div class="fx-step-title">Write bio · today</div><div class="fx-step-meta">25 min</div></div>
+            <div class="fx-step"><div class="fx-step-check">4</div><div class="fx-step-title">Choose 3 projects</div><div class="fx-step-meta">20 min</div></div>
+            <div class="fx-step"><div class="fx-step-check">5</div><div class="fx-step-title">Write project blurbs</div><div class="fx-step-meta">45 min</div></div>
+            <div class="fx-step"><div class="fx-step-check">6</div><div class="fx-step-title">Add contact form</div><div class="fx-step-meta">30 min</div></div>
+          </div>
+        `;
+      }
+    },
+    schedule: {
+      label: "Adaptive ping scheduling · live demo",
+      caption: "Multi-wave pings. Gentle heads-up first, full brief later, checklist at the end.",
+      render() {
+        return `
+          <div class="fx-notif amber">
+            <div class="fx-notif-top"><span>● Scheduling preview</span><span>Passport · Mar 2027</span></div>
+            <div class="fx-notif-body">ProgressPing schedules <b>4 pings</b>, each calibrated to the urgency and what you can actually act on.</div>
+          </div>
+          <div class="fx-timeline">
+            <div class="fx-timeline-head"><span>Ping schedule</span><span>Target: Mar 15</span></div>
+            <div class="fx-timeline-bar">
+              <div class="fx-timeline-fill" style="width:40%"></div>
+              <div class="fx-timeline-marker" style="left:0%"><div class="fx-timeline-dot fired"></div><div class="fx-timeline-label">Added</div></div>
+              <div class="fx-timeline-marker" style="left:25%"><div class="fx-timeline-dot fired"></div><div class="fx-timeline-label">-60d gentle</div></div>
+              <div class="fx-timeline-marker" style="left:40%"><div class="fx-timeline-dot now"></div><div class="fx-timeline-label">-30d brief</div></div>
+              <div class="fx-timeline-marker" style="left:75%"><div class="fx-timeline-dot"></div><div class="fx-timeline-label">-7d checklist</div></div>
+              <div class="fx-timeline-marker" style="left:100%"><div class="fx-timeline-dot"></div><div class="fx-timeline-label">Deadline</div></div>
+            </div>
+          </div>
+          <div class="fx-notif amber">
+            <div class="fx-notif-top"><span>Up next · now</span><span>30-day brief</span></div>
+            <div class="fx-notif-body"><b>Passport renewal</b> · Fee, processing time, nearest centre, required docs. Checklist arrives at -7 days.</div>
+          </div>
+        `;
+      }
+    },
+    dash: {
+      label: "Unified dashboard · live demo",
+      caption: "Events, goals, and tasks in one place. Filter by urgency or type.",
+      render() {
+        return `
+          <div class="fx-dash">
+            <div class="fx-dash-sec">Today's pings</div>
+            <div class="fx-dash-item"><div class="fx-dash-dot" style="background:var(--event)"></div><div><b>Driving licence renewal</b> · 30 days</div><span class="tag" style="color:var(--event)">urgent</span></div>
+            <div class="fx-dash-item"><div class="fx-dash-dot" style="background:var(--goal)"></div><div><b>$10k goal</b> · Week 4 check-in</div><span class="tag" style="color:var(--goal)">on track</span></div>
+            <div class="fx-dash-item"><div class="fx-dash-dot" style="background:var(--task)"></div><div><b>Personal website</b> · step 3 of 8</div><span class="tag" style="color:var(--task)">in progress</span></div>
+            <div class="fx-dash-sec">Upcoming</div>
+            <div class="fx-dash-item" style="opacity:0.7"><div class="fx-dash-dot" style="background:var(--muted)"></div><div>Passport renewal · 20 months</div><span class="tag" style="color:var(--muted)">scheduled</span></div>
+            <div class="fx-dash-item" style="opacity:0.7"><div class="fx-dash-dot" style="background:var(--muted)"></div><div>Learn Japanese · Month 2 in 8d</div><span class="tag" style="color:var(--muted)">later</span></div>
+          </div>
+        `;
+      }
+    },
+    replan: {
+      label: "Pings that replan · live demo",
+      caption: "Fell behind? Tell ProgressPing. It reworks the plan so you still finish on time.",
+      render() {
+        return `
+          <div class="fx-replan">
+            <div class="fx-replan-col">
+              <div class="fx-replan-head">Original plan</div>
+              <div class="fx-replan-line"><span class="mark">W3</span><span>Write bio</span></div>
+              <div class="fx-replan-line"><span class="mark">W4</span><span>Choose projects</span></div>
+              <div class="fx-replan-line"><span class="mark">W5</span><span>Write blurbs</span></div>
+              <div class="fx-replan-line"><span class="mark">W6</span><span>Add contact form</span></div>
+              <div class="fx-replan-line"><span class="mark">W7</span><span>Ship ✨</span></div>
+            </div>
+            <div class="fx-replan-arrow">→</div>
+            <div class="fx-replan-col after">
+              <div class="fx-replan-head">After "I'm behind 10 days"</div>
+              <div class="fx-replan-line"><span class="mark">W3</span><span>Write bio ✓ done</span></div>
+              <div class="fx-replan-line"><span class="mark">W5</span><span>Choose projects <i style="color:var(--ping);font-style:normal">(moved)</i></span></div>
+              <div class="fx-replan-line"><span class="mark">W6</span><span>Blurbs + contact (merged)</span></div>
+              <div class="fx-replan-line"><span class="mark">W7</span><span>Polish (trimmed)</span></div>
+              <div class="fx-replan-line"><span class="mark">W8</span><span>Ship ✨ <i style="color:var(--ping);font-style:normal">(+1 wk)</i></span></div>
+            </div>
+          </div>
+          <div class="fx-notif goal">
+            <div class="fx-notif-top"><span>● Replan ping</span><span>Just now</span></div>
+            <div class="fx-notif-body">Plan adjusted. You'll still ship — one week later, no steps dropped, two merged. No judgement.</div>
+          </div>
+        `;
+      }
+    }
+  };
+
+  function renderFx(key) {
+    const body = document.getElementById("fxBody");
+    const label = document.getElementById("fxLabel");
+    const caption = document.getElementById("fxCaption");
+    if (!body || !FX[key]) return;
+    body.innerHTML = `<div class="fx-panel active">${FX[key].render()}</div>`;
+    label.textContent = FX[key].label;
+    caption.textContent = FX[key].caption;
+    document.querySelectorAll(".fx-dot").forEach(d => d.classList.toggle("active", d.dataset.fx === key));
+    document.querySelectorAll(".fx-tab").forEach(t => t.classList.toggle("active", t.dataset.fx === key));
+  }
+
+  (function initFx(){
+    const dotsEl = document.getElementById("fxDots");
+    if (!dotsEl) return;
+    FX_ORDER.forEach(k => {
+      const d = document.createElement("span");
+      d.className = "fx-dot" + (k === "events" ? " active" : "");
+      d.dataset.fx = k;
+      d.title = FX[k].label;
+      d.addEventListener("click", () => renderFx(k));
+      dotsEl.appendChild(d);
+    });
+    document.querySelectorAll(".fx-tab").forEach(t => {
+      t.addEventListener("click", () => renderFx(t.dataset.fx));
+    });
+    renderFx("events");
+  })();
+
+  /* ── Email subscription (full implementation) ── */
+  (function initSubscribe(){
+    const form = document.getElementById("subForm");
+    const emailEl = document.getElementById("subEmail");
+    const btn = document.getElementById("subBtn");
+    const btnLabel = btn && btn.querySelector(".sub-btn-label");
+    const msg = document.getElementById("subMsg");
+    const success = document.getElementById("subSuccess");
+    const prefsEl = document.getElementById("subPrefs");
+    const subName = document.getElementById("subName");
+    const emailEcho = document.getElementById("subEmailEcho");
+    const tagsEl = document.getElementById("subTags");
+    const undo = document.getElementById("subUndo");
+    const countEl = document.getElementById("subCount");
+    const todayEl = document.getElementById("subToday");
+    const waitEl = document.getElementById("subWait");
+    const metaCount = document.querySelector(".sub-meta span:first-child");
+    if (!form) return;
+
+    const STORE = "progressping_subscribe_v1";
+    const COUNT_KEY = "progressping_count_v1";
+
+    // Animated counter — gently climbs to target
+    function animateNum(el, to, dur=900) {
+      if (!el) return;
+      const from = parseInt(el.textContent.replace(/\D/g,""), 10) || 0;
+      const start = performance.now();
+      function tick(now){
+        const t = Math.min(1, (now-start)/dur);
+        const eased = 1 - Math.pow(1-t, 3);
+        el.textContent = Math.round(from + (to-from)*eased).toLocaleString();
+        if (t < 1) requestAnimationFrame(tick);
+      }
+      requestAnimationFrame(tick);
+    }
+
+    // Persist a fake-but-stable counter that nudges up over time
+    function getCounts() {
+      try {
+        const raw = JSON.parse(localStorage.getItem(COUNT_KEY) || "null");
+        if (raw && raw.total && raw.stamp) return raw;
+      } catch(e) {}
+      const seed = { total: 218, today: 7, stamp: Date.now() };
+      localStorage.setItem(COUNT_KEY, JSON.stringify(seed));
+      return seed;
+    }
+    function bumpCounts(addSelf) {
+      const c = getCounts();
+      const hoursSince = (Date.now() - c.stamp) / 36e5;
+      const drift = Math.floor(hoursSince * 0.6);
+      c.total += drift + (addSelf ? 1 : 0);
+      c.today = Math.max(1, Math.floor((c.today + drift * 0.4) % 24)) + (addSelf ? 1 : 0);
+      c.stamp = Date.now();
+      localStorage.setItem(COUNT_KEY, JSON.stringify(c));
+      return c;
+    }
+
+    function paintCounts(c) {
+      animateNum(countEl, c.total);
+      animateNum(todayEl, c.today);
+      const wait = Math.max(7, 21 - Math.floor(c.total / 50));
+      animateNum(waitEl, wait);
+      if (metaCount) metaCount.innerHTML = `<span class="pip"></span> ${c.total.toLocaleString()} subscribed`;
+    }
+
+    // Pref toggling
+    prefsEl && prefsEl.querySelectorAll(".sub-pref").forEach(p => {
+      p.addEventListener("click", () => p.classList.toggle("active"));
+    });
+    function getPrefs() {
+      return Array.from(prefsEl.querySelectorAll(".sub-pref.active")).map(p => ({
+        key: p.dataset.pref,
+        label: p.querySelector("b").textContent.trim()
+      }));
+    }
+
+    // Validation
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+
+    function showMsg(text, kind) {
+      msg.textContent = text;
+      msg.classList.remove("error", "ok");
+      if (kind) msg.classList.add(kind);
+    }
+    function showError(text) {
+      form.classList.add("error");
+      showMsg(text, "error");
+      setTimeout(() => form.classList.remove("error"), 400);
+    }
+
+    function nameFromEmail(e) {
+      const local = (e.split("@")[0] || "").replace(/[._+-]+/g, " ");
+      const word = local.split(" ")[0];
+      if (!word) return "friend";
+      return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+    }
+
+    function showSuccess(record) {
+      form.style.display = "none";
+      msg.style.display = "none";
+      prefsEl.style.display = "none";
+      success.classList.add("show");
+      subName.textContent = nameFromEmail(record.email);
+      emailEcho.textContent = record.email;
+      tagsEl.innerHTML = "";
+      record.prefs.forEach(p => {
+        const t = document.createElement("span");
+        t.className = "sub-tag";
+        t.textContent = p.label;
+        tagsEl.appendChild(t);
+      });
+    }
+    function resetForm() {
+      form.style.display = "";
+      msg.style.display = "";
+      prefsEl.style.display = "";
+      success.classList.remove("show");
+      emailEl.value = "";
+      showMsg("Free forever tier · cancel anytime · we'll never share your email.", "");
+    }
+
+    // Restore prior subscription if any
+    try {
+      const prior = JSON.parse(localStorage.getItem(STORE) || "null");
+      if (prior && prior.email) showSuccess(prior);
+    } catch(e) {}
+
+    // Init counters
+    paintCounts(bumpCounts(false));
+
+    // Submit handler — fakes a network call so the UX feels real
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const email = emailEl.value.trim();
+      if (!email) { showError("Please enter your email."); emailEl.focus(); return; }
+      if (!EMAIL_RE.test(email)) { showError("That doesn't look like a valid email."); emailEl.focus(); return; }
+      const prefs = getPrefs();
+      if (prefs.length === 0) { showError("Pick at least one ping type below."); return; }
+
+      btn.disabled = true;
+      if (btnLabel) btnLabel.textContent = "Sending invite…";
+      btn.insertBefore(Object.assign(document.createElement("span"), { className: "spin" }), btn.firstChild);
+      showMsg("Sending your invite…", "");
+
+      const ENDPOINT = "https://script.google.com/macros/s/AKfycbxdt9iRcIdzOGsy64K7PAO8EL8mUp0Kb54NSk_Y6R3OYRxZSy0CiKoGuemNevggb0Tk/exec";
+
+      try {
+        await fetch(ENDPOINT, {
+          method: "POST",
+          mode: "no-cors",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, prefs: prefs.map(p => p.key) })
+        });
+      } catch(err) {
+        btn.disabled = false;
+        const sp = btn.querySelector(".spin"); if (sp) sp.remove();
+        if (btnLabel) btnLabel.textContent = "Send my invite →";
+        showError("Network error — please try again.");
+        return;
+      }
+
+      btn.disabled = false;
+      const sp = btn.querySelector(".spin"); if (sp) sp.remove();
+      if (btnLabel) btnLabel.textContent = "Send my invite →";
+
+      const record = { email, prefs, ts: Date.now() };
+      try { localStorage.setItem(STORE, JSON.stringify(record)); } catch(_) {}
+
+      const c = bumpCounts(true);
+      paintCounts(c);
+
+      showSuccess(record);
+    });
+
+    // Live validation styling
+    emailEl.addEventListener("input", () => {
+      form.classList.remove("error");
+      if (msg.classList.contains("error")) showMsg("Free forever tier · cancel anytime · we'll never share your email.", "");
+    });
+
+    undo && undo.addEventListener("click", () => {
+      try { localStorage.removeItem(STORE); } catch(_) {}
+      resetForm();
+      showMsg("Subscription removed. No hard feelings.", "ok");
+    });
+  })();
+
+</script>
+
+
+
+</body><grammarly-desktop-integration data-grammarly-shadow-root="true"></grammarly-desktop-integration></html>
